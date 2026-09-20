@@ -1,20 +1,12 @@
-#include <mpi/mpi.h>
-
-#include <stdlib.h>
-
-#include <stdio.h>
-
 #include <math.h>
-
-#define TAG1 10
-#define TAG2 20
+#include <mpi/mpi.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 void crivo_paralelo(char *primos_local, char *primos_base, int inicio, int fim,
                     int limite) {
-
   for (int p = 2; p <= limite; p++) {
     if (primos_base[p]) {
-
       int primeiro_multiplo = p * p;
 
       if (primeiro_multiplo < inicio) {
@@ -22,7 +14,6 @@ void crivo_paralelo(char *primos_local, char *primos_base, int inicio, int fim,
       }
 
       for (int multiplo = primeiro_multiplo; multiplo <= fim; multiplo += p) {
-
         primos_local[multiplo - inicio] = 0;
       }
     }
@@ -38,29 +29,29 @@ int main(int argc, char **argv) {
   MPI_Init(&argc, &argv);
 
   int n = 100000000;
+
   int size, rank;
 
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
   int quantidade = n - 1;
-  int tamanho_base = quantidade / size;
-  int resto = quantidade % size;
 
-  int tamanho_local = tamanho_base;
+  if (quantidade % size != 0) {
+    if (rank == 0) {
+      fprintf(
+          stderr,
+          "Erro: n - 1 (%d) nao e divisivel pelo numero de processos (%d).\n",
+          quantidade, size);
+    }
 
-  if (rank < resto) {
-    tamanho_local++;
+    MPI_Finalize();
+    return 1;
   }
 
-  // Até [2, N]
-  int inicio = 2 + (rank * tamanho_base);
-  if (rank < resto) {
-    inicio += rank;
-  } else {
-    inicio += resto;
-  }
+  int tamanho_local = quantidade / size;
 
+  int inicio = 2 + (rank * tamanho_local);
   int fim = inicio + tamanho_local - 1;
 
   printf("Rank %d: Responsavel pelo intervalo [%d, %d]\n", rank, inicio, fim);
@@ -71,7 +62,7 @@ int main(int argc, char **argv) {
     primos_local[i] = 1;
   }
 
-  int limite = sqrt(n);
+  int limite = (int)sqrt(n);
 
   char *primos_base = malloc(limite + 1);
 
@@ -80,7 +71,8 @@ int main(int argc, char **argv) {
       primos_base[i] = 1;
     }
 
-    primos_base[0] = primos_base[1] = 0;
+    primos_base[0] = 0;
+    primos_base[1] = 0;
 
     for (int p = 2; p * p <= limite; p++) {
       if (primos_base[p]) {
@@ -94,6 +86,7 @@ int main(int argc, char **argv) {
   MPI_Bcast(primos_base, limite + 1, MPI_CHAR, 0, MPI_COMM_WORLD);
 
   crivo_paralelo(primos_local, primos_base, inicio, fim, limite);
+
   char *primos_final = NULL;
 
   if (rank == 0) {
@@ -103,30 +96,36 @@ int main(int argc, char **argv) {
   MPI_Gather(primos_local, tamanho_local, MPI_CHAR, primos_final, tamanho_local,
              MPI_CHAR, 0, MPI_COMM_WORLD);
 
-  FILE *arq_saida = fopen("saida_paralelo.txt", "w");
+  if (rank == 0) {
+    FILE *arq_saida = fopen("saida_paralelo.txt", "w");
 
-  if (arq_saida == NULL) {
-    perror("Error ao gravar arquivo!");
-    MPI_Finalize();
+    if (arq_saida == NULL) {
+      perror("Erro ao gravar arquivo");
 
-    exit(1);
-  }
+      liberar_memoria((void **)&primos_local);
+      liberar_memoria((void **)&primos_base);
+      liberar_memoria((void **)&primos_final);
 
-  if (primos_final != NULL) {
+      MPI_Finalize();
+
+      return 1;
+    }
+
     for (int i = 0; i < quantidade; i++) {
+
       if (primos_final[i]) {
         fprintf(arq_saida, "%d\n", i + 2);
       }
     }
+
+    fclose(arq_saida);
   }
 
   liberar_memoria((void **)&primos_local);
   liberar_memoria((void **)&primos_base);
   liberar_memoria((void **)&primos_final);
 
-  fclose(arq_saida);
-  arq_saida = NULL;
-
   MPI_Finalize();
+
   return 0;
 }
