@@ -7,19 +7,33 @@ void crivo_paralelo(char *primos_local, char *primos_base, int inicio, int fim,
                     int limite) {
   for (int p = 2; p <= limite; p++) {
     if (primos_base[p]) {
-      int primeiro_multiplo = p * p;
 
+      // Começamos logicamente do p * p (como na versão linear)
+      // Usamos long long por segurança contra overflow se N for muito grande
+      long long primeiro_multiplo = (long long)p * p;
+
+      // Se o p*p estiver "antes" da área que este processo cuida,
+      // calculamos o salto O(1) usando módulo, que é fácil de ler:
       if (primeiro_multiplo < inicio) {
-        primeiro_multiplo = ((inicio + p - 1) / p) * p;
+        int resto = inicio % p;
+
+        if (resto == 0) {
+          // Se o início já é perfeitamente divisível por p, começamos nele.
+          primeiro_multiplo = inicio;
+        } else {
+          // Se não for, somamos o que falta para chegar ao próximo múltiplo.
+          primeiro_multiplo = inicio + (p - resto);
+        }
       }
 
-      for (int multiplo = primeiro_multiplo; multiplo <= fim; multiplo += p) {
+      // Laço clássico do Crivo (Idêntico ao linear)
+      for (long long multiplo = primeiro_multiplo; multiplo <= fim;
+           multiplo += p) {
         primos_local[multiplo - inicio] = 0;
       }
     }
   }
 }
-
 void liberar_memoria(void **array) {
   free(*array);
   *array = NULL;
