@@ -2,6 +2,8 @@
 
 #include <stdio.h>
 
+#include "../include/tempo.h"
+
 char *crivo_erastostenes(int n) {
   char *primos;
 
@@ -35,13 +37,21 @@ int main(int argc, char *argv[]) {
 
   int n = atoi(argv[1]);
 
-  FILE *arq_saida = fopen("saida_linear.txt", "w");
+  FILE *arq_saida = fopen("output/saida_linear.txt", "w");
+
+  Temporizador t;
+
+  iniciarTemporizador(&t);
 
   char *primos = crivo_erastostenes(n);
 
+  finalizarTemporizador(&t);
+
+  printf("Tempo total de execução:\n");
+  imprimirTempos(&t);
+
   for (int i = 0; i < n + 1; i++) {
     if (primos[i]) {
-      printf("%d\n", i);
       fprintf(arq_saida, "%d\n", i);
     }
   }

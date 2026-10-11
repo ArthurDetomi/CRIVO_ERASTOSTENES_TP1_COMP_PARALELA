@@ -34,6 +34,7 @@ void crivo_paralelo(char *primos_local, char *primos_base, int inicio, int fim,
     }
   }
 }
+
 void liberar_memoria(void **array) {
   free(*array);
   *array = NULL;
@@ -42,30 +43,54 @@ void liberar_memoria(void **array) {
 int main(int argc, char **argv) {
   MPI_Init(&argc, &argv);
 
-  int n = 100000000;
-
   int size, rank;
 
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  int quantidade = n - 1;
-
-  if (quantidade % size != 0) {
+  if (argc != 2) {
     if (rank == 0) {
-      fprintf(
-          stderr,
-          "Erro: n - 1 (%d) nao e divisivel pelo numero de processos (%d).\n",
-          quantidade, size);
+      fprintf(stderr, "Uso: %s <N>\n", argv[0]);
     }
 
     MPI_Finalize();
     return 1;
   }
 
-  int tamanho_local = quantidade / size;
+  int n = atoi(argv[1]);
 
-  int inicio = 2 + (rank * tamanho_local);
+  if (rank == 0)
+    printf("N = %d\n", n);
+
+  int quantidade = n - 1;
+
+  int lens[size], disps[size];
+
+  for (int i = 0; i < size; i++) {
+    lens[i] = quantidade / size;
+    disps[i] = 0;
+  }
+
+  int resto = quantidade % size;
+
+  int aux = 0;
+  for (int i = 0; i < resto; i++) {
+    if (aux >= size) {
+      aux = 0;
+    }
+    lens[aux]++;
+    aux++;
+  }
+
+  disps[0] = 0;
+
+  for (int i = 1; i < size; i++) {
+    disps[i] = disps[i - 1] + lens[i - 1];
+  }
+
+  int tamanho_local = lens[rank];
+
+  int inicio = 2 + disps[rank];
   int fim = inicio + tamanho_local - 1;
 
   printf("Rank %d: Responsavel pelo intervalo [%d, %d]\n", rank, inicio, fim);
@@ -79,6 +104,10 @@ int main(int argc, char **argv) {
   int limite = (int)sqrt(n);
 
   char *primos_base = malloc(limite + 1);
+
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  double tempo_inicio = MPI_Wtime();
 
   if (rank == 0) {
     for (int i = 0; i <= limite; i++) {
@@ -107,11 +136,22 @@ int main(int argc, char **argv) {
     primos_final = malloc(quantidade);
   }
 
-  MPI_Gather(primos_local, tamanho_local, MPI_CHAR, primos_final, tamanho_local,
-             MPI_CHAR, 0, MPI_COMM_WORLD);
+  MPI_Gatherv(primos_local, lens[rank], MPI_CHAR, primos_final, lens, disps,
+              MPI_CHAR, 0, MPI_COMM_WORLD);
+
+  double tempo_fim = MPI_Wtime();
+  double tempo_local = tempo_fim - tempo_inicio;
+  double tempo_maximo = 0.0;
+
+  MPI_Reduce(&tempo_local, &tempo_maximo, 1, MPI_DOUBLE, MPI_MAX, 0,
+             MPI_COMM_WORLD);
 
   if (rank == 0) {
-    FILE *arq_saida = fopen("saida_paralelo.txt", "w");
+    printf("Tempo paralelo: %.8f segundos\n", tempo_maximo);
+  }
+
+  if (rank == 0) {
+    FILE *arq_saida = fopen("output/saida_paralelo.txt", "w");
 
     if (arq_saida == NULL) {
       perror("Erro ao gravar arquivo");

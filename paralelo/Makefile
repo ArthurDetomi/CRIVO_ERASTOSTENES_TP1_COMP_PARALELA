@@ -14,7 +14,7 @@ endif
 # Variables
 # ------------------------------------------------------------------------------
 
-CC=gcc -std=c17
+CC=mpicc -std=c17
 CCPP=g++ -std=c++17
 CFLAGS=-g
 
@@ -28,7 +28,10 @@ SRC=$(wildcard $(SRC_DIR)/*.c) $(wildcard $(SRC_DIR)/**/*.c)
 OBJ_DIR=obj
 OBJ=$(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRC))
 OBJ_SUB_DIRS=$(sort $(dir $(OBJ)))
-EXE=tp1
+EXE=crivo_paralelo
+
+OUTPUT_DIR=output
+
 
 # Dev executable with hot reloading
 DEV=dev
@@ -53,11 +56,14 @@ $(OBJ_DIR):
 	$(MKDIR) "$@"
 	$(MKDIR) $(OBJ_SUB_DIRS)
 
-$(EXE): $(OBJ_DIR) $(OBJ)
+$(EXE): $(OBJ) | $(OBJ_DIR) $(OUTPUT_DIR)
 	$(CC) $(CFLAGS) $(OBJ) -o $@ $(INCLUDE_DIRS) $(LINK_DIRS) $(LINKS) $(DEFINE) -lm
 
-$(OBJ): $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
+$(OBJ): $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@ $(INCLUDE_DIRS) $(LINK_DIRS) $(LINKS) $(DEFINE)
+
+$(OUTPUT_DIR):
+	$(MKDIR) "$@"
 
 full-clean: clean
 
