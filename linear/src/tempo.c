@@ -37,9 +37,7 @@ double calcularTempoSistema(Temporizador *t) {
 
 // Imprime todos os tempos de execução de forma legível
 void imprimirTempos(Temporizador *t) {
-  printf("Tempo Real: %.8f segundos\n",
-         calcularTempoReal(t)); // Tempo real é agora o "Tempo Usuário"
-  printf("Tempo Sistema: %.8f segundos\n", calcularTempoSistema(t));
+  printf("Tempo Real: %.8f segundos\n", calcularTempoReal(t));
 }
 
 // Salva os resultados em um arquivo CSV

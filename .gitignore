@@ -3,3 +3,4 @@ crivo_linear
 crivo_paralelo
 obj/
 output/
+.venv
