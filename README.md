@@ -1,5 +1,7 @@
 # Crivo de Eratóstenes — Implementação Sequencial e Paralela com MPI
 
+**A documentação se encontra em docs/TP1_COMP_PARALELA.pdf**
+
 Este projeto implementa o **Crivo de Eratóstenes** em duas versões:
 
 - **Sequencial** (`linear/`): implementação clássica em C.
